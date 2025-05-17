@@ -1,0 +1,52 @@
+# Ruta del emulador
+$emulatorPath = "C:\ProgramData\CopilotEmulator\CopilotEmulator.ps1"
+# Nombre del proceso del emulador (para buscarlo en procesos PowerShell)
+$emulatorProcessName = "powershell"  # puede variar, buscamos por script ejecutado
+
+# Nombre de la tarea programada para el supervisor
+$taskName = "CopilotEmulatorSupervisorTask"
+
+function Is-EmulatorRunning {
+    # Busca procesos PowerShell que estén ejecutando el script del emulador
+    $procs = Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'"
+    foreach ($proc in $procs) {
+        $cmdLine = $proc.CommandLine
+        if ($cmdLine -and $cmdLine.ToLower().Contains($emulatorPath.ToLower())) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Start-Emulator {
+    Write-Host "El emulador no está corriendo. Iniciando el emulador..."
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile -WindowStyle Hidden -File `"$emulatorPath`"" -WindowStyle Hidden
+}
+
+function Create-ScheduledTask {
+    # Crea una tarea programada para iniciar este supervisor al iniciar sesión
+    if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
+        Write-Host "La tarea programada '$taskName' ya existe."
+    } else {
+        $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -File `"$PSCommandPath`""
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
+        $principal = New-ScheduledTaskPrincipal -UserId "BUILTIN\Users" -LogonType Interactive
+        Register-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -TaskName $taskName -Description "Supervisor del emulador Copilot Plus"
+        Write-Host "Tarea programada para autoinicio del supervisor creada."
+    }
+}
+
+# MAIN
+
+# Crear la tarea programada para autoiniciar este script supervisor
+Create-ScheduledTask
+
+# Comprobar y arrancar el emulador si no está corriendo
+if (-not (Is-EmulatorRunning)) {
+    Start-Emulator
+} else {
+    Write-Host "El emulador ya está corriendo."
+}
+
+# El supervisor puede seguir ejecutándose para monitorear o simplemente finalizar aquí
+# Si quieres que supervise continuamente, puedes agregar un loop aquí (con pausa)

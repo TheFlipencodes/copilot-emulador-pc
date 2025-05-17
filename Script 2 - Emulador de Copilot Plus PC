@@ -1,0 +1,60 @@
+# Ruta del archivo JSON de salida
+$jsonPath = "C:\ProgramData\CopilotEmulator\copilot_status.json"
+
+# Crear carpeta si no existe
+if (!(Test-Path -Path "C:\ProgramData\CopilotEmulator")) {
+    New-Item -ItemType Directory -Path "C:\ProgramData\CopilotEmulator" | Out-Null
+}
+
+# Función para obtener uso de CPU (PowerShell 5.1)
+function Get-CPUUsage {
+    try {
+        $cpuSample = Get-Counter '\Processor(_Total)\% Processor Time'
+        $cpuUsage = [math]::Round($cpuSample.CounterSamples[0].CookedValue, 2)
+    } catch {
+        $cpuUsage = 0
+    }
+    return $cpuUsage
+}
+
+# Función para obtener uso de RAM
+function Get-RAMUsage {
+    $os = Get-CimInstance Win32_OperatingSystem
+    $total = [math]::Round($os.TotalVisibleMemorySize / 1024, 2)
+    $free = [math]::Round($os.FreePhysicalMemory / 1024, 2)
+    $used = $total - $free
+    $percent = [math]::Round(($used / $total) * 100, 2)
+    return @{ 
+        UsedMB = $used
+        TotalMB = $total
+        Percent = $percent
+    }
+}
+
+# Bucle de emulación
+while ($true) {
+    $now = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $cpu = Get-CPUUsage
+    $ram = Get-RAMUsage
+
+    $data = @{
+        Timestamp = $now
+        CPU_Usage_Percent = "$cpu"
+        RAM_Usage_MB = "$($ram.UsedMB)"
+        RAM_Total_MB = "$($ram.TotalMB)"
+        RAM_Usage_Percent = "$($ram.Percent)"
+    }
+
+    # Guardar en JSON
+    $data | ConvertTo-Json -Depth 2 | Set-Content -Path $jsonPath -Encoding UTF8
+
+    # Imprimir en consola
+    Write-Host "===== Estado actual Copilot Emulator ====="
+    Write-Host "Fecha/Hora: $now"
+    Write-Host "CPU uso: $cpu %"
+    Write-Host "RAM usada: $($ram.UsedMB) MB / $($ram.TotalMB) MB ($($ram.Percent)%)"
+    Write-Host "--------------------------------------------"
+    Write-Host "Archivo JSON actualizado en: $jsonPath`n"
+
+    Start-Sleep -Seconds 5
+}

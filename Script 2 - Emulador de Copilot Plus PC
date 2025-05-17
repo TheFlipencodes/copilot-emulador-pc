@@ -1,3 +1,9 @@
+<#
+    Proyecto: Copilot Plus PC Emulator
+    Autor: TheFlipen
+    Año: 2025
+    Licencia: MIT License
+    #>
 # Ruta del archivo JSON de salida
 $jsonPath = "C:\ProgramData\CopilotEmulator\copilot_status.json"
 

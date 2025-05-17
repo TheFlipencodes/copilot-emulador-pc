@@ -1,0 +1,100 @@
+# Script 5 - Verificador de estado completo Copilot Emulator - Versión Final
+
+# Ruta base
+$basePath = "C:\ProgramData\CopilotEmulator"
+
+# Scripts a verificar
+$scripts = @{
+    "Script 1 (Instalador)" = Join-Path $basePath "Install-CopilotEmulator.ps1"
+    "Script 2 (Emulador)" = Join-Path $basePath "CopilotEmulator.ps1"
+    "Script 3 (Supervisor)" = Join-Path $basePath "Supervisor-CopilotEmulator.ps1"
+    "Script 4 (Opcional)" = Join-Path $basePath "Script5.ps1"
+}
+
+# Función para verificar existencia de archivo
+function Test-ScriptExistence {
+    param($path)
+    return Test-Path $path
+}
+
+# Verificar scripts
+$scriptExistence = @{}
+foreach ($key in $scripts.Keys) {
+    $scriptExistence[$key] = Test-ScriptExistence $scripts[$key]
+}
+
+# Verificar proceso emulador (por nombre)
+$emulatorProcessName = "powershell"
+$emulatorActive = Get-Process -Name $emulatorProcessName -ErrorAction SilentlyContinue | Where-Object {
+    $_.Path -and $_.Path -like "*CopilotEmulator.ps1*"
+} | Measure-Object | Select-Object -ExpandProperty Count
+$emulatorActive = $emulatorActive -gt 0
+
+# Verificar tarea programada del supervisor
+$taskName = "CopilotEmulatorSupervisorTask"
+try {
+    $task = Get-ScheduledTask -TaskName $taskName -ErrorAction Stop
+    $taskState = $task.State
+    $taskActive = ($taskState -eq "Ready" -or $taskState -eq "Running")
+}
+catch {
+    $taskActive = $false
+}
+
+# Obtener uso de CPU y RAM
+try {
+    $cpuLoad = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+    if ([double]::IsNaN($cpuLoad)) { $cpuLoad = 0 }
+}
+catch {
+    $cpuLoad = 0
+}
+
+try {
+    $mem = Get-CimInstance Win32_OperatingSystem
+    $totalMem = [math]::Round($mem.TotalVisibleMemorySize / 1024, 2)
+    $freeMem = [math]::Round($mem.FreePhysicalMemory / 1024, 2)
+    $usedMem = $totalMem - $freeMem
+    $ramUsagePercent = [math]::Round(($usedMem / $totalMem) * 100, 2)
+}
+catch {
+    $usedMem = 0
+    $totalMem = 1
+    $ramUsagePercent = 0
+}
+
+# Calcular estado general (ejemplo simple: promedio de condiciones)
+$existencePercent = (($scriptExistence.Values | Where-Object { $_ }) .Count / $scriptExistence.Count) * 100
+$emulatorPercent = if ($emulatorActive) { 100 } else { 0 }
+$taskPercent = if ($taskActive) { 100 } else { 0 }
+$cpuPercent = 100 - [math]::Min($cpuLoad,100)   # menos CPU usado es mejor
+$ramPercent = 100 - [math]::Min($ramUsagePercent,100) # menos RAM usada es mejor
+
+# Promedio simple para salud general (puedes ajustar la fórmula)
+$healthScore = [math]::Round(($existencePercent + $emulatorPercent + $taskPercent + $cpuPercent + $ramPercent) / 5, 2)
+
+# Mensajes de salud
+if ($healthScore -ge 80) {
+    $healthStatus = "Sistema saludable. ✅"
+} elseif ($healthScore -ge 50) {
+    $healthStatus = "Sistema con advertencias menores. ⚠️"
+} else {
+    $healthStatus = "Sistema en estado crítico ❌"
+}
+
+# Mostrar resultados
+Write-Host "===== Estado del sistema y emulador Copilot Plus ====="
+foreach ($key in $scriptExistence.Keys) {
+    $status = if ($scriptExistence[$key]) { "✅" } else { "❌" }
+    Write-Host "$key existente: $status"
+}
+Write-Host ""
+Write-Host "Proceso emulador activo: " + (if ($emulatorActive) { "✅" } else { "❌" })
+Write-Host "Tarea programada supervisor activa: " + (if ($taskActive) { "✅" } else { "❌" })
+Write-Host ""
+Write-Host ("Uso CPU actual: {0:N0} %" -f $cpuLoad)
+Write-Host ("Uso RAM actual: {0:N2} % ({1} MB de {2} MB usados)" -f $ramUsagePercent, $usedMem, $totalMem)
+Write-Host ""
+Write-Host ("Estado general (salud): {0}%" -f $healthScore)
+Write-Host $healthStatus
+Write-Host ""

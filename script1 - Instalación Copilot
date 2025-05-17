@@ -1,3 +1,9 @@
+<#
+    Proyecto: Copilot Plus PC Emulator
+    Autor: TheFlipen
+    Año: 2025
+    Licencia: MIT License
+    #> 
 # Script 1 - Instalador del emulador Copilot Plus PC 
 
 Write-Host "Iniciando la instalación del emulador Copilot Plus PC..."

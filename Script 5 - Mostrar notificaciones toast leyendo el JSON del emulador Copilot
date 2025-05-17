@@ -1,0 +1,56 @@
+# Script 5 - Mostrar notificaciones toast leyendo el JSON del emulador Copilot
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+function Show-ToastNotification {
+    param(
+        [string]$Title,
+        [string]$Message
+    )
+
+    $notifyIcon = New-Object System.Windows.Forms.NotifyIcon
+    $notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+    $notifyIcon.Visible = $true
+    $notifyIcon.BalloonTipTitle = $Title
+    $notifyIcon.BalloonTipText = $Message
+    $notifyIcon.BalloonTipIcon = [System.Windows.Forms.ToolTipIcon]::Info
+    $notifyIcon.ShowBalloonTip(30000)  # 30 segundos
+
+    # Mantener el ícono visible mientras dure la notificación
+    Start-Sleep -Seconds 35
+
+    $notifyIcon.Dispose()
+}
+
+# Ruta al archivo JSON generado por el emulador
+$jsonPath = "C:\ProgramData\CopilotEmulator\copilot_status.json"
+
+# Función para leer JSON y mostrar notificación
+function Update-Notification {
+    if (Test-Path $jsonPath) {
+        try {
+            $data = Get-Content $jsonPath -Raw | ConvertFrom-Json
+            $cpu = $data.CPU_Usage
+            $ram = $data.RAM_Usage
+            $timestamp = $data.Timestamp
+
+            $title = "Estado Copilot Emulator"
+            $message = "CPU Uso: $cpu`%" + "`nRAM Uso: $ram`%" + "`nÚltima actualización: $timestamp"
+
+            Show-ToastNotification -Title $title -Message $message
+        }
+        catch {
+            Write-Warning "Error leyendo o procesando el archivo JSON."
+        }
+    }
+    else {
+        Write-Warning "Archivo JSON no encontrado: $jsonPath"
+    }
+}
+
+# Bucle infinito para actualizar cada 5 segundos (puedes ajustar)
+while ($true) {
+    Update-Notification
+    Start-Sleep -Seconds 5
+}

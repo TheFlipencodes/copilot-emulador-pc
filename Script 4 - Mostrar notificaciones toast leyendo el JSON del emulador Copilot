@@ -1,4 +1,4 @@
-# Script 5 - Mostrar notificaciones toast leyendo el JSON del emulador Copilot
+# Script 4 - Mostrar notificaciones toast leyendo el JSON del emulador Copilot
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing

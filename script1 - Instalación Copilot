@@ -1,0 +1,53 @@
+# Script 1 - Instalador del emulador Copilot Plus PC 
+
+Write-Host "Iniciando la instalación del emulador Copilot Plus PC..."
+
+# Paso 1: Configurar política de ejecución para este proceso (permite ejecución local temporal)
+Write-Host "[1/4] Configurando política de ejecución..."
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
+Write-Progress -Activity "Instalación Copilot" -Status "Configurando política de ejecución" -PercentComplete 25
+
+# Paso 2: Crear carpeta para los scripts si no existe
+$installPath = "C:\ProgramData\CopilotEmulator"
+Write-Host "[2/4] Verificando carpeta de emulador..."
+if (-Not (Test-Path $installPath)) {
+    New-Item -Path $installPath -ItemType Directory | Out-Null
+    Write-Host "Carpeta creada en $installPath"
+} else {
+    Write-Host "Carpeta ya existe en $installPath"
+}
+Write-Progress -Activity "Instalación Copilot" -Status "Verificando carpeta" -PercentComplete 50
+
+# Paso 3: Copiar o crear el script 2 (emulador) en la carpeta destino
+$emulatorScriptPath = Join-Path $installPath "CopilotEmulator.ps1"
+Write-Host "[3/4] Verificando script de emulación..."
+
+# Aquí asume que el contenido del script 2 está disponible en variable $script2Content
+# Para ejemplo, creamos un script de emulación mínimo (debes reemplazarlo con tu script 2 completo)
+$script2Content = @"
+# Script 2 - Emulador Copilot Plus PC (ejemplo básico)
+Write-Host 'Ejecutando emulador Copilot Plus PC...'
+"@
+
+Set-Content -Path $emulatorScriptPath -Value $script2Content -Encoding UTF8
+Write-Host "Script de emulación guardado en $emulatorScriptPath"
+Write-Progress -Activity "Instalación Copilot" -Status "Guardando script de emulación" -PercentComplete 75
+
+# Paso 4: Crear tarea programada para autoinicio del emulador al iniciar Windows
+$taskName = "CopilotEmulatorTask"
+Write-Host "[4/4] Verificando tarea programada..."
+
+$taskExists = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+
+if ($taskExists) {
+    Write-Host "La tarea programada '$taskName' ya existe."
+} else {
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -WindowStyle Hidden -File `"$emulatorScriptPath`""
+    $trigger = New-ScheduledTaskTrigger -AtStartup
+    $principal = New-ScheduledTaskPrincipal -UserId "NT AUTHORITY\SYSTEM" -RunLevel Highest
+    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal
+    Write-Host "Tarea programada '$taskName' creada correctamente."
+}
+Write-Progress -Activity "Instalación Copilot" -Status "Configurando tarea programada" -PercentComplete 100
+
+Write-Host "`n✅ Instalación completada. El sistema de emulación está listo para usarse."
